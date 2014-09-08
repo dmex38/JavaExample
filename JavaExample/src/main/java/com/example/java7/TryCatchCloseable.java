@@ -1,10 +1,13 @@
 package com.example.java7;
 
 import java.io.Closeable;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
+import java.text.ParseException;
 
 /**
  *
- * @author DMEX38 
+ * @author DMEX38
  */
 public class TryCatchCloseable {
 
@@ -25,7 +28,6 @@ public class TryCatchCloseable {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-
         try (MyStream stream = new MyStream()) {
             stream.read();
         }
