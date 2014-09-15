@@ -11,7 +11,7 @@ import javax.ws.rs.core.MediaType;
  * @author David EXCOFFIER
  */
 @Path("/beanParam")
-public class RestProvider {
+public class RestServer {
 
     /*
      * Path param with default

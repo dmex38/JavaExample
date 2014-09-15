@@ -1,28 +1,27 @@
-package com.example.jee7.rest.link;
+package com.example.jee7.rest.filter;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 
 /**
  *
  * @author David EXCOFFIER david.excoffier@st.com
  */
-@Path("/link")
-public class RestLinkProvider {
+@Path("/filter")
+//@Logged for all resources or on Application for all
+public class RestServer {
 
     /*
      * GET simple
      */
     @GET
+    @Logged // <--------------
     @Path("/string")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getString() {
-        return Response.ok()
-                .entity("MyString")
-                .link("parents", "http://oracle.co").build();
+    public String getString() {
+        return "MyString";
     }
 
 }

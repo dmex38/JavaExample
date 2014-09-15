@@ -18,7 +18,7 @@ import javax.ws.rs.core.Response.Status;
  * @author David EXCOFFIER david.excoffier@st.com
  */
 @Path("downloadfile")
-public class RestFileProvider {
+public class RestFileServer {
 
     @GET
     @Path("/{FILENAME}/{FILE_ID}")

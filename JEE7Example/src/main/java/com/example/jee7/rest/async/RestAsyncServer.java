@@ -18,7 +18,7 @@ import javax.ws.rs.core.UriInfo;
  */
 //@Stateless
 @Path("/path/async")
-public class RestAsyncProvider {
+public class RestAsyncServer {
 
     @Context
     private UriInfo context;

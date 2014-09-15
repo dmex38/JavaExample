@@ -28,7 +28,7 @@ import javax.ws.rs.core.UriInfo;
  * @author David EXCOFFIER
  */
 @Path("/path")
-public class RestProvider {
+public class RestServer {
 
     @Context
     private UriInfo context;

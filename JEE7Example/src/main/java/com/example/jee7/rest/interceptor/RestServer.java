@@ -11,7 +11,7 @@ import javax.ws.rs.core.MediaType;
  */
 @Path("/interceptor")
 //@Compress for all resources or on Application for all
-public class RestProvider {
+public class RestServer {
 
     /*
      * GET simple
