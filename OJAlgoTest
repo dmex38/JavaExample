@@ -1,0 +1,149 @@
+package com.st.allocation.model.allocation.engine;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.ojalgo.netio.BasicLogger;
+import org.ojalgo.optimisation.Expression;
+import org.ojalgo.optimisation.ExpressionsBasedModel;
+import org.ojalgo.optimisation.Optimisation.Result;
+import org.ojalgo.optimisation.Variable;
+
+public class TestAllocationIssue {
+
+    /**
+     * @param args the command line arguments
+     *
+     * Objective: allocate the maximum qty, and try to keep proportionality
+     * between customer.
+     *
+     */
+    public static void main(String[] args) {
+
+        //List of Variable Names
+        List<String> variablesName = new ArrayList<>();
+        variablesName.add("CUSTOMER_1|PRODUCT_TYPE_1");
+        variablesName.add("CUSTOMER_2|PRODUCT_TYPE_1");
+        variablesName.add("CUSTOMER_3|PRODUCT_TYPE_1");
+        variablesName.add("CUSTOMER_3|PRODUCT_TYPE_2");
+        variablesName.add("CUSTOMER_3|PRODUCT_TYPE_3");
+        variablesName.add("CUSTOMER_3|PRODUCT_TYPE_4");
+        variablesName.add("CUSTOMER_3|PRODUCT_TYPE_5");
+        variablesName.add("CUSTOMER_4|PRODUCT_TYPE_1");
+        variablesName.add("CUSTOMER_4|PRODUCT_TYPE_2");
+        variablesName.add("CUSTOMER_5|PRODUCT_TYPE_2");
+        variablesName.add("CUSTOMER_5|PRODUCT_TYPE_3");
+        variablesName.add("CUSTOMER_5|PRODUCT_TYPE_4");
+        variablesName.add("CUSTOMER_6|PRODUCT_TYPE_2");
+        variablesName.add("CUSTOMER_6|PRODUCT_TYPE_3");
+        variablesName.add("CUSTOMER_6|PRODUCT_TYPE_4");
+        variablesName.add("CUSTOMER_6|PRODUCT_TYPE_5");
+
+        /*
+         * Constraints for each Customer = Demand of each Customer
+         * Sum of all variable linked to the customer <= Demand.
+         *
+         */
+        Map<String, Integer> constraintsCustomer = new LinkedHashMap<>();
+        constraintsCustomer.put("CUSTOMER_1", 40_000);
+        constraintsCustomer.put("CUSTOMER_2", 25_000);
+        constraintsCustomer.put("CUSTOMER_3", 15_000);
+        constraintsCustomer.put("CUSTOMER_4", 5_000);
+        constraintsCustomer.put("CUSTOMER_5", 2_000);
+
+        double demandTotal = constraintsCustomer.values().stream().mapToDouble(e -> e.doubleValue()).sum();
+
+        /*
+         * Constraits for each product type = Stock per product type.
+         * Sum of all variable linked to this product type <= 
+         */
+        Map<String, Integer> constraintsProduct = new HashMap<>();
+        constraintsProduct.put("PRODUCT_TYPE_1", 50_000);
+        constraintsProduct.put("PRODUCT_TYPE_2", 0);
+        constraintsProduct.put("PRODUCT_TYPE_3", 0);
+        constraintsProduct.put("PRODUCT_TYPE_4", 0);
+        constraintsProduct.put("PRODUCT_TYPE_5", 0);
+        double stockTotal = constraintsProduct.values().stream().mapToDouble(e -> e.doubleValue()).sum();
+
+        /*
+         *
+         */
+        ExpressionsBasedModel model = new ExpressionsBasedModel();
+
+        List<Variable> variables = new ArrayList<>();
+
+        //Create All Variables:
+        BasicLogger.debug("---- Variable creation ------");
+        variablesName.forEach(name -> {
+            Variable var = Variable.make(name).integer(true).lower(0.0);
+            model.addVariable(var);
+            variables.add(var);
+            BasicLogger.debug(var);
+        });
+
+        BasicLogger.debug("---- Constraints customers ------");
+        //Apply Customers constraints.
+        constraintsCustomer.entrySet().forEach(entry -> {
+            List<Variable> linked = variables.stream().filter(v -> v.getName().startsWith(entry.getKey())).collect(Collectors.toList());
+            Expression constraint = model.addExpression("CONSTRAINTS_" + entry.getKey());
+            constraint.lower(0.0).upper(entry.getValue().doubleValue());
+            constraint.setLinearFactorsSimple(linked);
+            linked.forEach(v -> v.upper(entry.getValue().doubleValue()));
+            BasicLogger.debug(constraint);
+        });
+
+        BasicLogger.debug("---- Constraints Product ------");
+        //Apply Product Type constraints.
+        constraintsProduct.entrySet().forEach(entry -> {
+            List<Variable> linked = variables.stream().filter(v -> v.getName().endsWith(entry.getKey())).collect(Collectors.toList());
+            Expression constraint = model.addExpression("CONSTRAINTS_" + entry.getKey());
+            constraint.lower(0.0).upper(entry.getValue().doubleValue());
+            constraint.setLinearFactorsSimple(linked);
+            BasicLogger.debug(constraint);
+        });
+
+        /*
+         * Objective expression.
+         * - Maximize the Sum of all variables
+         * - Minimize the Sum of square error vs proportionality.
+         */
+        BasicLogger.debug("---- Objective  ------");
+        Expression objective = model.addExpression("OBJECTIVE").weight(1.0);
+
+        // - Maximize the Sum of all variables
+        objective.setLinearFactorsSimple(variables);
+
+        List<Variable> errors = new ArrayList<>();
+        BasicLogger.debug("---- Error formula ------");
+        constraintsCustomer.entrySet().forEach(entry -> {
+            List<Variable> linked = variables.stream().filter(v -> v.getName().startsWith(entry.getKey())).collect(Collectors.toList());
+            if (!linked.isEmpty() && entry.getValue().doubleValue() > 0) {
+                Variable error = Variable.make("ERROR:" + entry.getKey());
+                model.addVariable(error);
+                errors.add(error);
+
+                Expression errorExp = model.addExpression("ERROR_EXP:" + entry.getKey()).level(stockTotal / demandTotal);
+                linked.forEach(v -> errorExp.setLinearFactor(v, 1.0 / entry.getValue().doubleValue()));
+                errorExp.setLinearFactor(error, -1.0);
+
+                //- Squared of error. 
+                objective.setQuadraticFactor(error, error, -1.0);
+            }
+        });
+
+        //- Maximise -(Sum of Square error) 
+        //model.options.validate = true;
+        Result result = model.maximise();
+        BasicLogger.debug(result);
+
+        BasicLogger.debug("");
+        BasicLogger.debug("");
+        variables.forEach(v -> BasicLogger.debug(v));
+        BasicLogger.debug("");
+        BasicLogger.debug("");
+        errors.forEach(v -> BasicLogger.debug(v));
+    }
+}
